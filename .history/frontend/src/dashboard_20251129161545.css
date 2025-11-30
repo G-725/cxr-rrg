@@ -1,0 +1,140 @@
+/* --------------------------
+   PAGE BACKGROUND
+--------------------------- */
+.dashboard-bg {
+  min-height: 100vh;
+  background: #0f1521;
+  padding-bottom: 50px;
+}
+
+/* --------------------------
+   PAGE TITLE
+--------------------------- */
+.page-title {
+  text-align: center;
+  color: white;
+  margin-top: 20px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* --------------------------
+   2-COLUMN LAYOUT
+--------------------------- */
+.dashboard-layout {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.left-panel,
+.right-panel {
+  width: 450px;
+}
+
+/* --------------------------
+   PREMIUM CARD STYLE
+--------------------------- */
+.card {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  padding: 25px;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+/* --------------------------
+   UPLOAD CARD
+--------------------------- */
+.card-heading {
+  color: white;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.file-upload {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: #192334;
+  border: 1px solid #475569;
+  color: white;
+}
+
+.notes-input {
+  width: 100%;
+  height: 90px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #192334;
+  border: 1px solid #475569;
+  color: white;
+}
+
+/* BUTTON */
+.analyze-btn {
+  margin-top: 18px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  transition: 0.2s ease;
+}
+.analyze-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* --------------------------
+   DIAGNOSIS REPORT
+--------------------------- */
+.diagnosis-header {
+  background: linear-gradient(90deg, #ff8e4d, #feb47b);
+  padding: 14px;
+  color: white;
+  text-align: center;
+  font-size: 18px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.diagnosis-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  color: white;
+}
+
+.label {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.value {
+  text-align: right;
+}
+
+/* X-RAY IMAGE */
+.diagnosis-img {
+  width: 75%;
+  display: block;
+  margin: 20px auto;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* Timestamp */
+.timestamp {
+  text-align: center;
+  font-size: 13px;
+  color: #cbd5e1;
+  margin-top: 12px;
+}

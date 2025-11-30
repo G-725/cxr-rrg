@@ -1,0 +1,247 @@
+@import './styles/premium.css';
+/* ===============================
+  Dashboard Background
+================================== */
+.dashboard-bg {
+  min-height: 100vh;
+  background: linear-gradient(180deg, rgba(11,18,35,0.95), rgba(6,10,18,0.95));
+  padding-bottom: 40px;
+}
+
+/* ===============================
+   Main Container
+================================== */
+.premium-container {
+  width: 95%;
+  max-width: 1100px;
+  margin: 24px auto;
+  text-align: left;
+}
+
+/* Title stays centered ALWAYS */
+.dash-title {
+  text-align: center !important;
+  width: 100%;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 18px;
+}
+
+/* ===============================
+   Upload Card (glass style)
+================================== */
+.upload-card {
+  background: var(--panel-bg);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--card-shadow);
+  animation: popIn 0.6s ease;
+  max-width: 700px;
+  margin: 0 auto 30px auto;
+  min-height: 300px;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+/* Inputs */
+.file-upload {
+  width: 100%;
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 2px dashed rgba(255,255,255,0.06);
+  border-radius: 12px;
+  color: var(--primary);
+  transition: 0.3s ease;
+  box-sizing: border-box; /* include padding in width */
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden; /* guard against long filenames causing overflow */
+}
+
+.file-upload:hover {
+  border-color: var(--accent1);
+}
+
+/* Ensure the standard button inside file input doesn't overflow the container */
+/* Modern browsers support ::file-selector-button and WebKit has ::-webkit-file-upload-button */
+.file-upload::file-selector-button,
+.file-upload::-webkit-file-upload-button {
+  padding: 8px 12px;
+  margin-right: 8px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.file-upload::file-selector-button:hover,
+.file-upload::-webkit-file-upload-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+
+.notes-input {
+  width: 100%;
+  margin-top: 12px;
+  height: 90px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.06);
+  color: var(--primary);
+  transition: 0.3s ease;
+  box-sizing: border-box; /* prevent content overflow from padding */
+  max-width: 100%;
+  resize: vertical; /* allow user to expand vertically only */
+  overflow: auto; /* ensure text doesn't break layout */
+}
+
+.notes-input:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 18px rgba(254,180,123,0.12);
+  outline: none;
+}
+
+/* Analyze button */
+.analyze-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  border: none;
+  margin-top: 18px;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.glow-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.18);
+}
+
+/* ===============================
+   Diagnosis Report Card (fixed width)
+================================== */
+.diagnosis-card {
+  margin: 30px auto;
+  max-width: 700px;
+  width: 100%;
+  background: var(--panel-bg);
+  border-radius: 22px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+  min-height: 300px;
+}
+
+/* Report title stays centered ALWAYS */
+.diagnosis-header {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  padding: 18px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  text-align: center !important;
+}
+
+/* Content */
+.diagnosis-content {
+  padding: 20px;
+  text-align: left;
+}
+
+.diagnosis-item {
+  max-width: 650px;
+  margin: 0 auto 12px auto;
+  display: flex;
+  justify-content: space-between;
+}
+
+.label {
+  font-weight: 700;
+  color: #374151;
+}
+.value {
+  color: #4b5563;
+  text-align: right;
+}
+
+/* Image centering and size fix */
+.diagnosis-img {
+  width: 100%;
+  max-width: 650px;
+  margin: 20px auto;
+  border-radius: 16px;
+  display: block;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  transition: 0.3s ease;
+}
+
+.diagnosis-img:hover {
+  transform: scale(1.03);
+}
+
+/* Timestamp */
+.timestamp {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Animations */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.premium-slide {
+  animation: popIn 0.6s ease-out;
+}
+
+/* Two-column layout when result exists */
+.container-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 26px;
+  align-items: start;
+}
+
+.container-grid .upload-card, .container-grid .diagnosis-card {
+  margin: 0;
+}
+
+/* Make the report card a bit sticky to keep it in view */
+.container-grid .diagnosis-card {
+  position: sticky;
+  top: 90px;
+}
+
+.upload-card, .diagnosis-card {
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.upload-card.pop-in {
+  transform: translateY(0);
+}
+
+/* responsive adjustments */
+@media (max-width: 900px) {
+  .container-grid { grid-template-columns: 1fr; }
+  .container-grid .diagnosis-card { position: static; top: auto; }
+}

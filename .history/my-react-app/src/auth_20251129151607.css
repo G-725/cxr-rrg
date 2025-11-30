@@ -1,0 +1,89 @@
+@import './styles/premium.css';
+
+/* FULLSCREEN BACKGROUND */
+.premium-bg {
+  height: 100vh;
+  background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--primary);
+}
+
+/* Glassmorphic Card */
+.auth-card {
+  width: 420px;
+  max-width: 100%;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  margin: 24px auto; /* keep centered in premium container */
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Pop Animation */
+.pop-in {
+  animation: pop 0.7s ease;
+}
+
+@keyframes pop {
+  from { opacity:0; transform: scale(0.9); }
+  to { opacity:1; transform: scale(1); }
+}
+
+/* Inputs */
+.auth-input {
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.06);
+  font-size: 16px;
+  transition: 0.3s;
+  background: rgba(255,255,255,0.03);
+  color: var(--primary);
+  box-sizing: border-box;
+}
+.auth-input::placeholder { color: rgba(230,238,248,0.55); }
+
+.auth-input:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 12px rgba(254,180,123,0.12);
+  outline: none;
+}
+
+/* Premium Orange Button */
+.auth-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 18px;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.auth-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.12);
+}
+
+/* Title */
+.ashom-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+/* Switch link */
+.switch-text { margin-top: 14px; font-size: 14px; }
+.link { color: var(--accent1); cursor: pointer; font-weight: 600; }
+.link:hover { text-decoration: underline; }
+.switch-text { color: var(--muted); }
