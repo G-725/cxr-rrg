@@ -111,15 +111,14 @@ app.post("/api/auth/login", async (req, res) => {
 // POST /api/upload - image + notes -> store + dummy MedGamma result
 app.post("/api/upload", upload.single("image"), async (req, res) => {
   try {
-    const { notes, email } = req.body; // email can be passed from frontend later
+    const { notes, email } = req.body;
     const file = req.file;
 
     if (!file) {
       return res.status(400).json({ error: "Image file is required" });
     }
 
-    // TODO: replace this with a real MedGamma model call to analyze images.
-    // For now, we return a static example report so the flow can be tested.
+    // Dummy MedGamma result
     const aiReport = {
       model: "MedGamma-demo",
       finding: "No acute cardiopulmonary abnormality detected.",
@@ -134,8 +133,10 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
     });
 
     res.json({
-      message: "Image analyzed",
-      report
+      message: "Image analyzed and saved",
+      report, // Contains the full saved report
+      result: aiReport, // For frontend compatibility if needed
+      imagePath: file.path
     });
   } catch (err) {
     console.error("Upload error:", err);
@@ -153,6 +154,21 @@ app.get("/api/reports", async (req, res) => {
   } catch (err) {
     console.error("Reports error:", err);
     res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+// GET /api/history - list of reports for a specific user
+app.get("/api/history", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Email query parameter required" });
+    }
+    const reports = await Report.find({ userEmail: email }).sort({ createdAt: -1 });
+    res.json(reports);
+  } catch (err) {
+    console.error("History error:", err);
+    res.status(500).json({ error: "Failed to fetch history" });
   }
 });
 
