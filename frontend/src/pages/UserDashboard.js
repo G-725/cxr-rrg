@@ -7,7 +7,8 @@ import "jspdf-autotable";
 import Navbar from "../components/Navbar";
 import "../dashboard.css";
 
-const API_URL = "http://127.0.0.1:5000";
+// Replace with your ngrok public URL (example: https://abcd1234.ngrok-free.app)
+const API_URL = "https://6213a0a73eee.ngrok-free.app";
 
 function UserDashboard() {
   const [file, setFile] = useState(null);
@@ -45,38 +46,44 @@ function UserDashboard() {
     fd.append("email", localStorage.getItem("email") || "unknown@user.com");
 
     try {
-      // Reverted to /api/upload - analyzes AND saves
-      const res = await axios.post(`${API_URL}/api/upload`, fd);
-      // res.data contains { report, result, imagePath }
+      // Send to the Colab/ngrok backend which exposes `/predict`
+      const res = await axios.post(`${API_URL}/predict`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Backend returns { report: "...long radiology report..." }
+      const reportText = res.data?.report || "";
+
       setResult({
-        result: res.data.result,
-        imagePath: res.data.imagePath,
-        report: res.data.report // Report is already saved
+        reportText,
+        // Use a local preview for the uploaded image
+        imagePreview: URL.createObjectURL(file),
       });
     } catch (error) {
-      alert("Analysis failed");
+      console.error(error);
+      alert("Analysis failed. Check the ngrok URL and backend logs.");
     } finally {
       setLoading(false);
     }
   };
 
   const saveReport = async () => {
-    // Report is already saved in the new flow
-    if (result?.report) {
-      alert("Report is already saved to history.");
-    }
+    if (!result?.reportText) return alert("No report to save");
+    // Saving reports to history is not implemented in this demo frontend.
+    // You can POST `result.reportText` to your backend to persist it.
+    alert("Save to history not implemented. Implement backend save to persist reports.");
   };
 
   const downloadPDF = (reportData) => {
     const doc = new jsPDF();
 
     // Use reportData or fallback to current result state
-    const data = reportData || result?.report || {
+    const data = reportData || {
       _id: "Unsaved",
       userEmail: localStorage.getItem("email"),
       createdAt: new Date(),
-      aiReport: result.result,
-      notes: notes
+      reportText: result?.reportText || "",
+      notes: notes,
     };
 
     // Header
@@ -96,7 +103,7 @@ function UserDashboard() {
         ['Report ID', data._id || "Pending Save"],
         ['Patient Email', data.userEmail || "Unknown"],
         ['Date', new Date(data.createdAt || Date.now()).toLocaleString()],
-        ['Confidence', `${(data.aiReport.confidence * 100).toFixed(1)}%`],
+        ['Confidence', `N/A`],
       ],
       theme: 'grid',
       headStyles: { fillColor: [255, 77, 0] },
@@ -108,7 +115,9 @@ function UserDashboard() {
     doc.text("AI Findings", 14, doc.lastAutoTable.finalY + 15);
 
     doc.setFontSize(12);
-    doc.text(data.aiReport.finding, 14, doc.lastAutoTable.finalY + 25);
+    // Write the full report; split into lines to avoid overflow
+    const splitReport = doc.splitTextToSize(data.reportText || "No report returned.", 180);
+    doc.text(splitReport, 14, doc.lastAutoTable.finalY + 25);
 
     // Notes
     if (data.notes) {
@@ -217,22 +226,21 @@ function UserDashboard() {
                   <FileText size={24} className="text-accent" />
                   <h2>Analysis Results</h2>
                   <span className="confidence-badge">
-                    {/* Handle both structure types: direct result or saved report */}
-                    {((result.result?.confidence || result.report?.aiReport?.confidence || 0) * 100).toFixed(1)}% Confidence
+                    {result?.reportText ? "Report Received" : "N/A"}
                   </span>
                 </div>
 
                 <div className="report-content">
                   <div className="finding-box">
                     <h3>Primary Finding</h3>
-                    <p className="finding-text">
-                      {result.result?.finding || result.report?.aiReport?.finding}
-                    </p>
+                    <div className="finding-text">
+                      <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{result.reportText}</pre>
+                    </div>
                   </div>
 
                   <div className="image-preview">
                     <img
-                      src={`${API_URL}/${result.imagePath || result.report?.imagePath}`}
+                      src={result.imagePreview || `${API_URL}/${result.report?.imagePath || ''}`}
                       alt="Analyzed X-Ray"
                     />
                     <div className="scan-overlay"></div>
@@ -253,10 +261,10 @@ function UserDashboard() {
                     <button
                       className="action-btn secondary"
                       onClick={saveReport}
-                      disabled={!!result.report} // Disable if already saved (result.report exists)
+                      disabled={!result?.reportText}
                     >
                       <CheckCircle size={18} />
-                      {result.report ? "Saved" : "Save to History"}
+                      {result?.reportText ? "Save to History" : "Save to History"}
                     </button>
                     <button className="action-btn primary" onClick={() => downloadPDF()}>
                       <Download size={18} />

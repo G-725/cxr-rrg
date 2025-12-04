@@ -144,6 +144,36 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
   }
 });
 
+// POST /api/save-report - accept image + reportText from external AI (Colab/ngrok)
+app.post("/api/save-report", upload.single("image"), async (req, res) => {
+  try {
+    const { notes, email, reportText } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "Image file is required to save report" });
+    }
+
+    const aiReport = {
+      model: "MedGamma-extern",
+      finding: reportText || "",
+      confidence: null,
+    };
+
+    const report = await Report.create({
+      userEmail: email || "unknown@user.com",
+      notes: notes || "",
+      imagePath: file.path,
+      aiReport,
+    });
+
+    res.json({ message: "Report saved", report });
+  } catch (err) {
+    console.error("Save report error:", err);
+    res.status(500).json({ error: "Failed to save report" });
+  }
+});
+
 // ---------------- DOCTOR ROUTE ----------------
 
 // GET /api/reports - list of all reports
