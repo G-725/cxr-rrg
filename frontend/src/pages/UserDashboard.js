@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Upload, FileText, Activity, CheckCircle, Download } from "lucide-react";
 import axios from "axios";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import Navbar from "../components/Navbar";
 import "../dashboard.css";
 
@@ -138,7 +138,7 @@ function UserDashboard() {
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
     // Patient/Report Info
-    doc.autoTable({
+    autoTable(doc, {
       startY: 40,
       head: [['Field', 'Value']],
       body: [
