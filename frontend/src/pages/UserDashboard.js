@@ -8,14 +8,16 @@ import Navbar from "../components/Navbar";
 import "../dashboard.css";
 
 // Replace with your ngrok public URL (example: https://abcd1234.ngrok-free.app)
-const API_URL = "https://6213a0a73eee.ngrok-free.app";
+const API_URL = "https://0c112b5e9ecb.ngrok-free.app";
 
 function UserDashboard() {
   const [file, setFile] = useState(null);
   const [notes, setNotes] = useState("");
+  const [patientName, setPatientName] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -43,12 +45,15 @@ function UserDashboard() {
     const fd = new FormData();
     fd.append("image", file);
     fd.append("notes", notes);
+    fd.append("patientName", patientName);
     fd.append("email", localStorage.getItem("email") || "unknown@user.com");
 
     try {
       // Send to the Colab/ngrok backend which exposes `/predict`
+      console.log(`Uploading to: ${API_URL}/predict`);
       const res = await axios.post(`${API_URL}/predict`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000, // 120 seconds for model inference
       });
 
       // Backend returns { report: "...long radiology report..." }
@@ -60,18 +65,55 @@ function UserDashboard() {
         imagePreview: URL.createObjectURL(file),
       });
     } catch (error) {
-      console.error(error);
-      alert("Analysis failed. Check the ngrok URL and backend logs.");
+      console.error("Upload error full object:", error);
+      console.error("Error code:", error?.code);
+      console.error("Error response:", error?.response);
+      console.error("API_URL being used:", API_URL);
+
+      let serverMsg = "Network Error";
+      if (error?.response?.data?.error) {
+        serverMsg = error.response.data.error;
+      } else if (error?.response?.data) {
+        serverMsg = JSON.stringify(error.response.data);
+      } else if (error?.code === "ECONNABORTED") {
+        serverMsg = "Request timeout (120s). Model may be slow or ngrok tunnel down.";
+      } else if (error?.code === "ERR_NETWORK") {
+        serverMsg = `Network Error: ngrok URL unreachable. Check: 1) URL is correct, 2) Colab cell is running, 3) ngrok tunnel active. Using URL: ${API_URL}`;
+      } else if (error?.message) {
+        serverMsg = error.message;
+      }
+
+      alert(`Analysis failed: ${serverMsg}`);
     } finally {
       setLoading(false);
     }
   };
 
+
   const saveReport = async () => {
     if (!result?.reportText) return alert("No report to save");
-    // Saving reports to history is not implemented in this demo frontend.
-    // You can POST `result.reportText` to your backend to persist it.
-    alert("Save to history not implemented. Implement backend save to persist reports.");
+
+    // Connect to local backend for saving
+    const BACKEND_URL = "http://127.0.0.1:5000";
+
+    if (!patientName.trim()) return alert("Please enter a Patient Name before saving.");
+
+    const fd = new FormData();
+    fd.append("image", file); // Re-upload the image file to save it locally in backend
+    fd.append("notes", notes);
+    fd.append("patientName", patientName);
+    fd.append("email", localStorage.getItem("email") || "unknown@user.com");
+    fd.append("reportText", result.reportText);
+
+    try {
+      await axios.post(`${BACKEND_URL}/api/save-report`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert("Report saved to history successfully!");
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Failed to save report to history.");
+    }
   };
 
   const downloadPDF = (reportData) => {
@@ -187,6 +229,23 @@ function UserDashboard() {
             </div>
 
             <div className="notes-section">
+              <label>Patient Name / Identifier</label>
+              <input
+                type="text"
+                placeholder="Ex. John Doe, Patient #123"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  color: 'var(--text-primary)',
+                  marginBottom: '1rem'
+                }}
+              />
+
               <label>Clinical Notes (Optional)</label>
               <textarea
                 placeholder="Add any relevant patient symptoms or history..."
@@ -232,9 +291,49 @@ function UserDashboard() {
 
                 <div className="report-content">
                   <div className="finding-box">
-                    <h3>Primary Finding</h3>
-                    <div className="finding-text">
-                      <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{result.reportText}</pre>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <h3>Primary Finding</h3>
+                      <button
+                        onClick={() => setIsEditing(!isEditing)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ff4d00',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        {isEditing ? 'Done' : 'Edit'}
+                      </button>
+                    </div>
+                    <div
+                      className="finding-text"
+                      style={{
+                        position: 'relative',
+                        border: isEditing ? '1px solid rgba(255, 77, 0, 0.5)' : '1px solid transparent',
+                        borderRadius: '8px',
+                        transition: 'border-color 0.2s'
+                      }}
+                    >
+                      <div
+                        contentEditable={isEditing}
+                        suppressContentEditableWarning={true}
+                        onBlur={(e) => setResult({ ...result, reportText: e.currentTarget.innerText })}
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          margin: 0,
+                          fontFamily: 'inherit',
+                          fontSize: '1rem',
+                          lineHeight: '1.6',
+                          color: '#e4e4e7',
+                          padding: '0.5rem',
+                          outline: 'none',
+                          minHeight: '100px'
+                        }}
+                      >
+                        {result.reportText}
+                      </div>
                     </div>
                   </div>
 

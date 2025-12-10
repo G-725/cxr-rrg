@@ -111,7 +111,7 @@ app.post("/api/auth/login", async (req, res) => {
 // POST /api/upload - image + notes -> store + dummy MedGamma result
 app.post("/api/upload", upload.single("image"), async (req, res) => {
   try {
-    const { notes, email } = req.body;
+    const { notes, email, patientName } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -127,6 +127,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 
     const report = await Report.create({
       userEmail: email || "unknown@user.com",
+      patientName: patientName || "Unknown Patient",
       notes: notes || "",
       imagePath: file.path,
       aiReport
@@ -147,7 +148,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 // POST /api/save-report - accept image + reportText from external AI (Colab/ngrok)
 app.post("/api/save-report", upload.single("image"), async (req, res) => {
   try {
-    const { notes, email, reportText } = req.body;
+    const { notes, email, reportText, patientName } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -162,6 +163,7 @@ app.post("/api/save-report", upload.single("image"), async (req, res) => {
 
     const report = await Report.create({
       userEmail: email || "unknown@user.com",
+      patientName: patientName || "Unknown Patient",
       notes: notes || "",
       imagePath: file.path,
       aiReport,
@@ -199,6 +201,59 @@ app.get("/api/history", async (req, res) => {
   } catch (err) {
     console.error("History error:", err);
     res.status(500).json({ error: "Failed to fetch history" });
+  }
+});
+
+// PUT /api/history/:id - update a report
+app.put("/api/history/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { patientName, notes, finding } = req.body;
+
+    const report = await Report.findById(id);
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    if (patientName !== undefined) report.patientName = patientName;
+    if (notes !== undefined) report.notes = notes;
+    if (finding !== undefined && report.aiReport) report.aiReport.finding = finding;
+
+    await report.save();
+    res.json({ message: "Report updated", report });
+  } catch (err) {
+    console.error("Update error:", err);
+    res.status(500).json({ error: "Failed to update report" });
+  }
+});
+
+// DELETE /api/history/:id - delete a specific report
+app.delete("/api/history/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Report.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+    res.json({ message: "Report deleted successfully" });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ error: "Failed to delete report" });
+  }
+});
+
+// DELETE /api/history/clear - delete all reports for a user
+app.delete("/api/history/clear/all", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Email query parameter required" });
+    }
+    const result = await Report.deleteMany({ userEmail: email });
+    res.json({ message: "History cleared", count: result.deletedCount });
+  } catch (err) {
+    console.error("Clear history error:", err);
+    res.status(500).json({ error: "Failed to clear history" });
   }
 });
 

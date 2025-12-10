@@ -34,13 +34,6 @@
   gap: 2rem;
 }
 
-@media (min-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-}
-
 .upload-section,
 .report-section {
   width: 100%;

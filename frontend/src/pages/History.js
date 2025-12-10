@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FileText, Download, Calendar, Search, ArrowLeft } from "lucide-react";
+import { FileText, Download, Calendar, Search, Trash2, Trash, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import Navbar from "../components/Navbar";
 import "./history.css";
+import ReportModal from "../components/ReportModal";
 
 const API_URL = "http://127.0.0.1:5000";
 
@@ -14,18 +15,11 @@ function History() {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedReport, setSelectedReport] = useState(null); // For modal
     const nav = useNavigate();
     const email = localStorage.getItem("email");
 
-    useEffect(() => {
-        if (!email) {
-            nav("/login");
-            return;
-        }
-        fetchHistory();
-    }, [email, nav]);
-
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         try {
             const res = await axios.get(`${API_URL}/api/history?email=${email}`);
             setReports(res.data);
@@ -33,6 +27,36 @@ function History() {
             console.error("Failed to fetch history", err);
         } finally {
             setLoading(false);
+        }
+    }, [email]);
+
+    useEffect(() => {
+        if (!email) {
+            nav("/login");
+            return;
+        }
+        fetchHistory();
+    }, [email, nav, fetchHistory]);
+
+    const deleteReport = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this report?")) return;
+        try {
+            await axios.delete(`${API_URL}/api/history/${id}`);
+            setReports(reports.filter((r) => r._id !== id));
+        } catch (err) {
+            console.error("Failed to delete report", err);
+            alert("Failed to delete report");
+        }
+    };
+
+    const clearHistory = async () => {
+        if (!window.confirm("Are you sure you want to clear ALL history? This cannot be undone.")) return;
+        try {
+            await axios.delete(`${API_URL}/api/history/clear/all?email=${email}`);
+            setReports([]);
+        } catch (err) {
+            console.error("Failed to clear history", err);
+            alert("Failed to clear history");
         }
     };
 
@@ -49,7 +73,7 @@ function History() {
         doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
         // Patient/Report Info
-        doc.autoTable({
+        autoTable(doc, {
             startY: 40,
             head: [['Field', 'Value']],
             body: [
@@ -83,7 +107,8 @@ function History() {
 
     const filteredReports = reports.filter(r =>
         r.aiReport.finding.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r.notes && r.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+        (r.notes && r.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.patientName && r.patientName.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -100,6 +125,12 @@ function History() {
                         <h1>Report History</h1>
                         <p>Access and manage your past diagnostic reports.</p>
                     </motion.div>
+                    {reports.length > 0 && (
+                        <button className="clear-btn" onClick={clearHistory}>
+                            <Trash2 size={18} />
+                            Clear History
+                        </button>
+                    )}
                 </header>
 
                 <div className="history-controls">
@@ -107,7 +138,7 @@ function History() {
                         <Search size={20} />
                         <input
                             type="text"
-                            placeholder="Search findings or notes..."
+                            placeholder="Search findings, notes, or patient name..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -146,10 +177,18 @@ function History() {
                                 </div>
 
                                 <div className="card-body">
-                                    <h4>{report.aiReport.finding}</h4>
-                                    {report.notes && (
-                                        <p className="report-notes">"{report.notes}"</p>
-                                    )}
+                                    <h5
+                                        className="patient-name-link"
+                                        onClick={() => setSelectedReport(report)}
+                                        title="Click to view full report"
+                                        style={{ fontSize: '1.1rem', cursor: 'pointer' }}
+                                    >
+                                        <User size={16} style={{ marginRight: '8px' }} />
+                                        {report.patientName || "Unknown Patient"}
+                                    </h5>
+                                    <p style={{ fontSize: '0.85rem', color: '#a1a1aa', marginTop: '0.5rem' }}>
+                                        Click to view report details
+                                    </p>
                                 </div>
 
                                 <div className="card-footer">
@@ -160,12 +199,28 @@ function History() {
                                         <Download size={16} />
                                         Download PDF
                                     </button>
+                                    <button
+                                        className="delete-btn"
+                                        onClick={() => deleteReport(report._id)}
+                                        title="Delete Report"
+                                    >
+                                        <Trash size={16} />
+                                    </button>
                                 </div>
                             </motion.div>
                         ))}
                     </div>
                 )}
             </div>
+
+
+            {selectedReport && (
+                <ReportModal
+                    report={selectedReport}
+                    onClose={() => setSelectedReport(null)}
+                    API_URL={API_URL}
+                />
+            )}
         </div>
     );
 }
