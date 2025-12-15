@@ -24,7 +24,7 @@ function Navbar() {
       <div className="nav-container">
         <div className="nav-left">
           <Activity className="brand-icon" size={24} />
-          <span className="brand-name">CXR MedGamma</span>
+          <span className="brand-name">CXR-RRG</span>
         </div>
 
         <div className="nav-center">

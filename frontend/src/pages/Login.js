@@ -17,8 +17,11 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/auth/login`, { email, password });
-      localStorage.setItem("email", email);
+      await axios.post(`${API_URL}/api/auth/login`, { email, password })
+        .then((res) => {
+          localStorage.setItem("email", res.data.email);
+          localStorage.setItem("userName", res.data.name || "User"); // Save name
+        });
       nav("/dashboard");
     } catch (err) {
       alert("Invalid credentials");

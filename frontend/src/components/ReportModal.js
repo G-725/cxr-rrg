@@ -58,7 +58,7 @@ const ReportModal = ({ report, onClose, API_URL }) => {
         }
     };
 
-    const downloadPDF = () => {
+    const downloadPDF = async () => {
         try {
             const doc = new jsPDF();
             const data = {
@@ -74,7 +74,7 @@ const ReportModal = ({ report, onClose, API_URL }) => {
             // Header
             doc.setFontSize(20);
             doc.setTextColor(255, 77, 0);
-            doc.text("CXR MedGamma Report", 14, 22);
+            doc.text("CXR-RRG Report", 14, 22);
 
             doc.setFontSize(10);
             doc.setTextColor(100);
@@ -87,6 +87,8 @@ const ReportModal = ({ report, onClose, API_URL }) => {
                 body: [
                     ['Report ID', data._id],
                     ['Patient Name', data.patientName || "Unknown"],
+                    ['User/Doctor', currentReport.userName || "Unknown"],
+                    ['User Email', data.userEmail],
                     ['Date', new Date(data.createdAt).toLocaleString()],
                     ['Confidence', (data.confidence !== undefined && data.confidence !== null) ? `${(data.confidence * 100).toFixed(1)}%` : 'N/A'],
                 ],
@@ -94,36 +96,98 @@ const ReportModal = ({ report, onClose, API_URL }) => {
                 headStyles: { fillColor: [255, 77, 0] },
             });
 
+            let currentY = doc.lastAutoTable.finalY + 15;
+
+            // --- Add Image Logic ---
+            if (currentReport.imagePath && !imageFailed) {
+                try {
+                    // 1. Construct URL
+                    const p = String(currentReport.imagePath || '');
+                    const s = p.replace(/\\/g, '/');
+                    const idx = s.indexOf('uploads/');
+                    const rel = idx !== -1 ? s.slice(idx) : 'uploads/' + s.split('/').slice(-1)[0];
+                    const imgUrl = `${API_URL}/${rel.replace(/^\/+/, '')}`;
+
+                    // 2. Fetch Blob
+                    const res = await fetch(imgUrl);
+                    if (!res.ok) throw new Error("Failed to fetch image");
+                    const blob = await res.blob();
+
+                    // 3. Convert to DataURL
+                    const base64Img = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+
+                    // 4. Add to PDF
+                    const MAX_WIDTH = 100;
+                    const MAX_HEIGHT = 100;
+
+                    const imgProps = doc.getImageProperties(base64Img);
+                    let imgWidth = imgProps.width;
+                    let imgHeight = imgProps.height;
+
+                    const ratio = Math.min(MAX_WIDTH / imgWidth, MAX_HEIGHT / imgHeight);
+                    imgWidth *= ratio;
+                    imgHeight *= ratio;
+
+                    doc.addImage(base64Img, 'JPEG', 14, currentY, imgWidth, imgHeight);
+                    currentY += imgHeight + 15;
+
+                } catch (imgErr) {
+                    console.error("PDF Image Error:", imgErr);
+                }
+            }
+            // -----------------------
+
+            // --- Helper function for text pagination ---
+            const addTextWithPagination = (text, yPos, fontSize = 12) => {
+                doc.setFontSize(fontSize);
+                const lines = doc.splitTextToSize(text || "", 180);
+                const lineHeight = fontSize * 0.3527 * 1.5; // convert pt to mm (approx) and add spacing
+
+                for (let i = 0; i < lines.length; i++) {
+                    if (yPos > 280) { // Check for bottom of page
+                        doc.addPage();
+                        yPos = 20; // Reset Y to top margin
+                    }
+                    doc.text(lines[i], 14, yPos);
+                    yPos += lineHeight;
+                }
+                return yPos;
+            };
+            // ------------------------------------------
+
             // Findings
             doc.setFontSize(14);
             doc.setTextColor(0);
-            const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 50;
-            doc.text("AI Findings", 14, finalY + 15);
 
-            doc.setFontSize(12);
-            // Write the full report; split into lines to avoid overflow
-            const splitReport = doc.splitTextToSize(data.reportText || "No report returned.", 180);
-            doc.text(splitReport, 14, finalY + 25);
+            if (currentY > 270) {
+                doc.addPage();
+                currentY = 20;
+            }
+            doc.text("AI Findings", 14, currentY);
+            currentY += 10;
+
+            // Write Findings
+            currentY = addTextWithPagination(data.reportText || "No report returned.", currentY, 12);
 
             // Notes
             if (data.notes) {
-                // Calculate Y position based on previous text height
-                // approximate height: lines * line height
-                const findingHeight = splitReport.length * 7;
-                const notesY = finalY + 25 + findingHeight + 10;
+                currentY += 10;
 
-                // check if new page needed (simplified check)
-                if (notesY > 250) {
+                if (currentY > 270) {
                     doc.addPage();
-                    doc.text("Clinical Notes", 14, 20);
-                    doc.setFontSize(12);
-                    doc.text(data.notes, 14, 30);
-                } else {
-                    doc.setFontSize(14);
-                    doc.text("Clinical Notes", 14, notesY);
-                    doc.setFontSize(12);
-                    doc.text(data.notes, 14, notesY + 10);
+                    currentY = 20;
                 }
+                doc.setFontSize(14);
+                doc.text("Clinical Notes", 14, currentY);
+                currentY += 10;
+
+                // Write Notes
+                currentY = addTextWithPagination(data.notes, currentY, 12);
             }
 
             doc.save(`report-${data._id.slice(-6)}.pdf`);
@@ -279,6 +343,10 @@ const ReportModal = ({ report, onClose, API_URL }) => {
                                         <div>
                                             <span style={{ color: '#a1a1aa', display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Confidence</span>
                                             <span style={{ color: '#10b981', fontWeight: 500 }}>{currentReport.aiReport.confidence ? (currentReport.aiReport.confidence * 100).toFixed(0) + '%' : 'N/A'}</span>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <span style={{ color: '#a1a1aa', display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Uploaded by</span>
+                                            <span style={{ color: 'white', fontWeight: 500 }}>{currentReport.userName || "Unknown"} <span style={{ fontSize: '0.8em', color: '#71717a' }}>({currentReport.userEmail})</span></span>
                                         </div>
                                     </div>
                                 </div>

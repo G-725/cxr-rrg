@@ -53,7 +53,7 @@ function Features() {
                         Advanced <span className="text-accent">Features</span>
                     </h1>
                     <p style={{ color: "var(--text-secondary)", fontSize: "1.2rem", maxWidth: "600px", margin: "0 auto" }}>
-                        Discover the tools that make CXR MedGamma a powerful assistant for medical professionals.
+                        Discover the tools that make CXR-RRG a powerful assistant for medical professionals.
                     </p>
                 </motion.div>
 

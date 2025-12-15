@@ -60,13 +60,13 @@ function History() {
         }
     };
 
-    const downloadPDF = (report) => {
+    const downloadPDF = async (report) => {
         const doc = new jsPDF();
 
         // Header
         doc.setFontSize(20);
         doc.setTextColor(255, 77, 0); // Accent color
-        doc.text("CXR MedGamma Report", 14, 22);
+        doc.text("CXR-RRG Report", 14, 22);
 
         doc.setFontSize(10);
         doc.setTextColor(100);
@@ -78,7 +78,10 @@ function History() {
             head: [['Field', 'Value']],
             body: [
                 ['Report ID', report._id],
-                ['Patient Email', report.userEmail],
+                ['Patient Name', report.patientName],
+                ['ECT Number', report.ectNumber || "N/A"],
+                ['User/Doctor', report.userName || "Unknown"],
+                ['User Email', report.userEmail],
                 ['Date', new Date(report.createdAt).toLocaleString()],
                 ['Confidence', `${(report.aiReport.confidence * 100).toFixed(1)}%`],
             ],
@@ -86,20 +89,98 @@ function History() {
             headStyles: { fillColor: [255, 77, 0] },
         });
 
+        let currentY = doc.lastAutoTable.finalY + 15;
+
+        // --- Add Image Logic ---
+        if (report.imagePath) {
+            try {
+                // 1. Construct URL
+                const p = String(report.imagePath || '');
+                const s = p.replace(/\\/g, '/');
+                const idx = s.indexOf('uploads/');
+                const rel = idx !== -1 ? s.slice(idx) : 'uploads/' + s.split('/').slice(-1)[0];
+                const imgUrl = `${API_URL}/${rel.replace(/^\/+/, '')}`;
+
+                // 2. Fetch Blob
+                const res = await fetch(imgUrl);
+                if (!res.ok) throw new Error("Failed to fetch image");
+                const blob = await res.blob();
+
+                // 3. Convert to DataURL
+                const base64Img = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+                // 4. Add to PDF
+                const MAX_WIDTH = 100;
+                const MAX_HEIGHT = 100;
+
+                const imgProps = doc.getImageProperties(base64Img);
+                let imgWidth = imgProps.width;
+                let imgHeight = imgProps.height;
+
+                const ratio = Math.min(MAX_WIDTH / imgWidth, MAX_HEIGHT / imgHeight);
+                imgWidth *= ratio;
+                imgHeight *= ratio;
+
+                doc.addImage(base64Img, 'JPEG', 14, currentY, imgWidth, imgHeight);
+                currentY += imgHeight + 15;
+
+            } catch (imgErr) {
+                console.error("PDF Image Error:", imgErr);
+            }
+        }
+        // -----------------------
+
+        // --- Helper function for text pagination ---
+        const addTextWithPagination = (text, yPos, fontSize = 12) => {
+            doc.setFontSize(fontSize);
+            const lines = doc.splitTextToSize(text || "", 180);
+            const lineHeight = fontSize * 0.3527 * 1.5; // convert pt to mm (approx) and add spacing
+
+            for (let i = 0; i < lines.length; i++) {
+                if (yPos > 280) { // Check for bottom of page
+                    doc.addPage();
+                    yPos = 20; // Reset Y to top margin
+                }
+                doc.text(lines[i], 14, yPos);
+                yPos += lineHeight;
+            }
+            return yPos;
+        };
+        // ------------------------------------------
+
         // Findings
         doc.setFontSize(14);
         doc.setTextColor(0);
-        doc.text("AI Findings", 14, doc.lastAutoTable.finalY + 15);
 
-        doc.setFontSize(12);
-        doc.text(report.aiReport.finding, 14, doc.lastAutoTable.finalY + 25);
+        if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+        }
+        doc.text("AI Findings", 14, currentY);
+        currentY += 10;
+
+        // Write Findings
+        currentY = addTextWithPagination(report.aiReport.finding || "No findings.", currentY, 12);
 
         // Notes
         if (report.notes) {
+            currentY += 10;
+
+            if (currentY > 270) {
+                doc.addPage();
+                currentY = 20;
+            }
             doc.setFontSize(14);
-            doc.text("Clinical Notes", 14, doc.lastAutoTable.finalY + 40);
-            doc.setFontSize(12);
-            doc.text(report.notes, 14, doc.lastAutoTable.finalY + 50);
+            doc.text("Clinical Notes", 14, currentY);
+            currentY += 10;
+
+            // Write Notes
+            currentY = addTextWithPagination(report.notes, currentY, 12);
         }
 
         doc.save(`report-${report._id.slice(-6)}.pdf`);
@@ -108,7 +189,8 @@ function History() {
     const filteredReports = reports.filter(r =>
         r.aiReport.finding.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (r.notes && r.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (r.patientName && r.patientName.toLowerCase().includes(searchTerm.toLowerCase()))
+        (r.patientName && r.patientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.ectNumber && r.ectNumber.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -185,7 +267,11 @@ function History() {
                                     >
                                         <User size={16} style={{ marginRight: '8px' }} />
                                         {report.patientName || "Unknown Patient"}
+                                        {report.ectNumber && <span style={{ fontSize: '0.9rem', color: '#a1a1aa', marginLeft: '8px' }}>({report.ectNumber})</span>}
                                     </h5>
+                                    <div style={{ fontSize: '0.8rem', color: '#71717a', marginTop: '0.2rem', marginLeft: '24px' }}>
+                                        Uploaded by: <span style={{ color: '#e4e4e7' }}>{report.userName && report.userName !== "Unknown User" ? report.userName : report.userEmail.split('@')[0]}</span>
+                                    </div>
                                     <p style={{ fontSize: '0.85rem', color: '#a1a1aa', marginTop: '0.5rem' }}>
                                         Click to view report details
                                     </p>

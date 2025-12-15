@@ -10,6 +10,7 @@ const API_URL = "http://127.0.0.1:5000";
 function Register() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,6 +20,7 @@ function Register() {
     try {
       await axios.post(`${API_URL}/api/auth/register`, {
         email,
+        name,
         password,
       });
 
@@ -47,7 +49,7 @@ function Register() {
         <div className="auth-header">
           <Activity className="brand-icon-lg" size={40} />
           <h2>Create an account</h2>
-          <p>Start your journey with CXR MedGamma today</p>
+          <p>Start your journey with CXR-RRG today</p>
         </div>
 
         <form className="auth-form" onSubmit={registerUser}>
@@ -58,6 +60,17 @@ function Register() {
               placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
             />
           </div>

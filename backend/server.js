@@ -61,6 +61,7 @@ app.post("/api/auth/register", async (req, res) => {
     const user = await User.create({
       email,
       password: hashed,
+      name: req.body.name || "",
       role: "user"
     });
 
@@ -98,7 +99,8 @@ app.post("/api/auth/login", async (req, res) => {
     res.json({
       message: "User login success",
       role: user.role || "user",
-      email: user.email
+      email: user.email,
+      name: user.name || "User" // Send name back
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -111,7 +113,7 @@ app.post("/api/auth/login", async (req, res) => {
 // POST /api/upload - image + notes -> store + dummy MedGamma result
 app.post("/api/upload", upload.single("image"), async (req, res) => {
   try {
-    const { notes, email, patientName } = req.body;
+    const { notes, email, patientName, ectNumber } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -120,14 +122,16 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 
     // Dummy MedGamma result
     const aiReport = {
-      model: "MedGamma-demo",
+      model: "CXR-RRG-demo",
       finding: "No acute cardiopulmonary abnormality detected.",
       confidence: 0.92
     };
 
     const report = await Report.create({
       userEmail: email || "unknown@user.com",
+      userName: req.body.userName || "Unknown User", // Added userName
       patientName: patientName || "Unknown Patient",
+      ectNumber: ectNumber || "",
       notes: notes || "",
       // Ensure URL-safe, forward-slash path for browser use (avoid Windows backslashes)
       imagePath: path.posix.join('uploads', file.filename),
@@ -149,7 +153,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 // POST /api/save-report - accept image + reportText from external AI (Colab/ngrok)
 app.post("/api/save-report", upload.single("image"), async (req, res) => {
   try {
-    const { notes, email, reportText, patientName } = req.body;
+    const { notes, email, reportText, patientName, ectNumber } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -164,7 +168,9 @@ app.post("/api/save-report", upload.single("image"), async (req, res) => {
 
     const report = await Report.create({
       userEmail: email || "unknown@user.com",
+      userName: req.body.userName || "Unknown User", // Added userName
       patientName: patientName || "Unknown Patient",
+      ectNumber: ectNumber || "",
       notes: notes || "",
       // Store a forward-slash path suitable for constructing URLs
       imagePath: path.posix.join('uploads', file.filename),
@@ -210,7 +216,7 @@ app.get("/api/history", async (req, res) => {
 app.put("/api/history/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { patientName, notes, finding } = req.body;
+    const { patientName, notes, finding, ectNumber } = req.body;
 
     const report = await Report.findById(id);
     if (!report) {
@@ -218,6 +224,7 @@ app.put("/api/history/:id", async (req, res) => {
     }
 
     if (patientName !== undefined) report.patientName = patientName;
+    if (ectNumber !== undefined) report.ectNumber = ectNumber;
     if (notes !== undefined) report.notes = notes;
     if (finding !== undefined && report.aiReport) report.aiReport.finding = finding;
 

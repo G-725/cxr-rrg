@@ -8,12 +8,13 @@ import Navbar from "../components/Navbar";
 import "../dashboard.css";
 
 // Replace with your ngrok public URL (example: https://abcd1234.ngrok-free.app)
-const API_URL = "https://a332912b3a7a.ngrok-free.app"
+const API_URL = "https://2e37bf15f194.ngrok-free.app"
 
 function UserDashboard() {
   const [file, setFile] = useState(null);
   const [notes, setNotes] = useState("");
   const [patientName, setPatientName] = useState("");
+  const [ectNumber, setEctNumber] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -46,6 +47,7 @@ function UserDashboard() {
     fd.append("image", file);
     fd.append("notes", notes);
     fd.append("patientName", patientName);
+    fd.append("ectNumber", ectNumber);
     fd.append("email", localStorage.getItem("email") || "unknown@user.com");
 
     try {
@@ -102,7 +104,15 @@ function UserDashboard() {
     fd.append("image", file); // Re-upload the image file to save it locally in backend
     fd.append("notes", notes);
     fd.append("patientName", patientName);
-    fd.append("email", localStorage.getItem("email") || "unknown@user.com");
+    fd.append("ectNumber", ectNumber);
+    const storedUserName = localStorage.getItem("userName");
+    const userEmail = localStorage.getItem("email") || "unknown@user.com";
+    const displayName = (storedUserName && storedUserName !== "User" && storedUserName !== "Unknown User")
+      ? storedUserName
+      : userEmail.split('@')[0];
+
+    fd.append("email", userEmail);
+    fd.append("userName", displayName); // Send User Name or Email Prefix
     fd.append("reportText", result.reportText);
 
     try {
@@ -116,7 +126,7 @@ function UserDashboard() {
     }
   };
 
-  const downloadPDF = (reportData) => {
+  const downloadPDF = async (reportData) => {
     const doc = new jsPDF();
 
     // Use reportData or fallback to current result state
@@ -131,7 +141,7 @@ function UserDashboard() {
     // Header
     doc.setFontSize(20);
     doc.setTextColor(255, 77, 0); // Accent color
-    doc.text("CXR MedGamma Report", 14, 22);
+    doc.text("CXR-RRG Report", 14, 22);
 
     doc.setFontSize(10);
     doc.setTextColor(100);
@@ -143,7 +153,10 @@ function UserDashboard() {
       head: [['Field', 'Value']],
       body: [
         ['Report ID', data._id || "Pending Save"],
-        ['Patient Email', data.userEmail || "Unknown"],
+        ['Patient Name', patientName || "Unknown"],
+        ['ECT Number', ectNumber || "N/A"],
+        ['User/Doctor', data.userName || localStorage.getItem("userName") || "Unknown"],
+        ['User Email', data.userEmail || "Unknown"],
         ['Date', new Date(data.createdAt || Date.now()).toLocaleString()],
         ['Confidence', `N/A`],
       ],
@@ -151,22 +164,85 @@ function UserDashboard() {
       headStyles: { fillColor: [255, 77, 0] },
     });
 
+    let currentY = doc.lastAutoTable.finalY + 15;
+
+    // --- Add X-Ray Image ---
+    if (file) {
+      try {
+        const base64Img = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // Calculate available width/height
+        const MAX_WIDTH = 100; // max width in mm
+        const MAX_HEIGHT = 100; // max height in mm
+
+        const imgProps = doc.getImageProperties(base64Img);
+        let imgWidth = imgProps.width;
+        let imgHeight = imgProps.height;
+
+        // Scale logic
+        const ratio = Math.min(MAX_WIDTH / imgWidth, MAX_HEIGHT / imgHeight);
+        imgWidth = imgWidth * ratio;
+        imgHeight = imgHeight * ratio;
+
+        doc.addImage(base64Img, 'JPEG', 14, currentY, imgWidth, imgHeight);
+        currentY += imgHeight + 15;
+      } catch (err) {
+        console.error("Error adding image to PDF:", err);
+      }
+    }
+    // -----------------------
+
+    // --- Helper function for text pagination ---
+    const addTextWithPagination = (text, yPos, fontSize = 12) => {
+      doc.setFontSize(fontSize);
+      const lines = doc.splitTextToSize(text || "", 180);
+      const lineHeight = fontSize * 0.3527 * 1.5; // convert pt to mm (approx) and add spacing
+
+      for (let i = 0; i < lines.length; i++) {
+        if (yPos > 280) { // Check for bottom of page
+          doc.addPage();
+          yPos = 20; // Reset Y to top margin
+        }
+        doc.text(lines[i], 14, yPos);
+        yPos += lineHeight;
+      }
+      return yPos;
+    };
+    // ------------------------------------------
+
     // Findings
     doc.setFontSize(14);
     doc.setTextColor(0);
-    doc.text("AI Findings", 14, doc.lastAutoTable.finalY + 15);
 
-    doc.setFontSize(12);
-    // Write the full report; split into lines to avoid overflow
-    const splitReport = doc.splitTextToSize(data.reportText || "No report returned.", 180);
-    doc.text(splitReport, 14, doc.lastAutoTable.finalY + 25);
+    if (currentY > 270) {
+      doc.addPage();
+      currentY = 20;
+    }
+    doc.text("AI Findings", 14, currentY);
+    currentY += 10;
+
+    // Write Findings
+    currentY = addTextWithPagination(data.reportText || "No report returned.", currentY, 12);
 
     // Notes
     if (data.notes) {
+      currentY += 10; // Spacing before notes header
+
+      if (currentY > 270) {
+        doc.addPage();
+        currentY = 20;
+      }
       doc.setFontSize(14);
-      doc.text("Clinical Notes", 14, doc.lastAutoTable.finalY + 40);
-      doc.setFontSize(12);
-      doc.text(data.notes, 14, doc.lastAutoTable.finalY + 50);
+      doc.text("Clinical Notes", 14, currentY);
+      currentY += 10;
+
+      // Write Notes
+      currentY = addTextWithPagination(data.notes, currentY, 12);
     }
 
     doc.save(`report-${(data._id || "unsaved").slice(-6)}.pdf`);
@@ -235,6 +311,23 @@ function UserDashboard() {
                 placeholder="Ex. John Doe, Patient #123"
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  color: 'var(--text-primary)',
+                  marginBottom: '1rem'
+                }}
+              />
+
+              <label>ECT Number</label>
+              <input
+                type="text"
+                placeholder="Ex. ECT-12345"
+                value={ectNumber}
+                onChange={(e) => setEctNumber(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '1rem',
