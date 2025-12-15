@@ -129,7 +129,8 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
       userEmail: email || "unknown@user.com",
       patientName: patientName || "Unknown Patient",
       notes: notes || "",
-      imagePath: file.path,
+      // Ensure URL-safe, forward-slash path for browser use (avoid Windows backslashes)
+      imagePath: path.posix.join('uploads', file.filename),
       aiReport
     });
 
@@ -137,7 +138,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
       message: "Image analyzed and saved",
       report, // Contains the full saved report
       result: aiReport, // For frontend compatibility if needed
-      imagePath: file.path
+      imagePath: path.posix.join('uploads', file.filename)
     });
   } catch (err) {
     console.error("Upload error:", err);
@@ -165,7 +166,8 @@ app.post("/api/save-report", upload.single("image"), async (req, res) => {
       userEmail: email || "unknown@user.com",
       patientName: patientName || "Unknown Patient",
       notes: notes || "",
-      imagePath: file.path,
+      // Store a forward-slash path suitable for constructing URLs
+      imagePath: path.posix.join('uploads', file.filename),
       aiReport,
     });
 

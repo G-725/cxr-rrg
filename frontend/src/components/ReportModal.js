@@ -13,6 +13,7 @@ const ReportModal = ({ report, onClose, API_URL }) => {
     });
     const [currentReport, setCurrentReport] = React.useState(report);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [imageFailed, setImageFailed] = React.useState(false);
 
     React.useEffect(() => {
         if (report) {
@@ -214,15 +215,35 @@ const ReportModal = ({ report, onClose, API_URL }) => {
                         {/* Top Section: Image and Patient Details */}
                         <div className="top-section" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                             <div className="image-container" style={{ flex: '1 1 300px' }}>
-                                <img
-                                    src={`${API_URL}/${currentReport.imagePath}`} // Serve from backend
-                                    alt="X-ray"
-                                    style={{
+                                {currentReport.imagePath && !imageFailed ? (
+                                    <img
+                                        src={(() => {
+                                            const p = String(currentReport.imagePath || '');
+                                            const s = p.replace(/\\/g, '/');
+                                            const idx = s.indexOf('uploads/');
+                                            const rel = idx !== -1 ? s.slice(idx) : 'uploads/' + s.split('/').slice(-1)[0];
+                                            return `${API_URL}/${rel.replace(/^\/+/, '')}`;
+                                        })()}
+                                        alt="X-ray"
+                                        onError={() => setImageFailed(true)}
+                                        style={{
+                                            width: '100%',
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(255,255,255,0.1)'
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{
                                         width: '100%',
+                                        height: '220px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
                                         borderRadius: '12px',
-                                        border: '1px solid rgba(255,255,255,0.1)'
-                                    }}
-                                />
+                                        border: '1px solid rgba(255,255,255,0.06)',
+                                        color: '#a1a1aa'
+                                    }}>{imageFailed ? 'Image failed to load' : 'No image available'}</div>
+                                )}
                             </div>
 
                             <div className="details-container" style={{ flex: '1 1 300px' }}>

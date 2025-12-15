@@ -8,7 +8,7 @@ import Navbar from "../components/Navbar";
 import "../dashboard.css";
 
 // Replace with your ngrok public URL (example: https://abcd1234.ngrok-free.app)
-const API_URL = "https://0c112b5e9ecb.ngrok-free.app";
+const API_URL = "https://a332912b3a7a.ngrok-free.app"
 
 function UserDashboard() {
   const [file, setFile] = useState(null);
